@@ -10,8 +10,14 @@ from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
+
 from core.handlers.start import start_router
 from core.handlers.new_post import new_post_router
+from core.handlers.play import play_router
+from core.middlewares.db import DbSessionMiddleware
 
 
 load_dotenv()
@@ -27,7 +33,7 @@ WEBHOOK_PATH = f"/bot/{BOT_TOKEN}"
 # Secret key to validate requests from Telegram (optional)
 WEBHOOK_SECRET = getenv("WEBHOOK_SECRET")
 BASE_WEBHOOK_URL = getenv("BASE_WEBHOOK_URL")
-
+DB_URL = getenv("DB_URL")
 
 async def on_startup(bot: Bot) -> None:
     # Set webhook 
@@ -38,13 +44,26 @@ async def on_startup(bot: Bot) -> None:
 
 
 def main() -> None:
+    # Creating DB engine for PostgreSQL
+    engine = create_async_engine(DB_URL, 
+                                 future=True, 
+                                 echo=True,
+                                 poolclass=NullPool
+                                 )
+
+    # Creating DB connections pool
+    db_pool = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
     # Dispatcher is a root router
     dp = Dispatcher()
 
+    dp.message.middleware(DbSessionMiddleware(db_pool))
     # ... and all other routers should be attached to Dispatcher
     dp.include_routers(
         start_router,
-        new_post_router)
+        new_post_router,
+        play_router
+        )
 
     # register other commands
 
