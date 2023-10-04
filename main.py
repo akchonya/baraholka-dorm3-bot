@@ -10,7 +10,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
@@ -18,7 +18,8 @@ from core.handlers.start import start_router
 from core.handlers.new_post import new_post_router
 from core.handlers.play import play_router
 from core.middlewares.db import DbSessionMiddleware
-
+from core.db.engine import create_async_engine, procced_schemas, get_session_maker
+from core.db.base import metadata
 
 load_dotenv()
 
@@ -42,22 +43,23 @@ async def on_startup(bot: Bot) -> None:
                           allowed_updates=["message", "chat_member", ] # allow updates needed
                           )
 
+    engine = create_async_engine(DB_URL)
+    await procced_schemas(engine, metadata)
+
 
 def main() -> None:
-    # Creating DB engine for PostgreSQL
-    engine = create_async_engine(DB_URL, 
-                                 future=True, 
-                                 echo=True,
-                                 poolclass=NullPool
-                                 )
-
-    # Creating DB connections pool
-    db_pool = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     # Dispatcher is a root router
     dp = Dispatcher()
 
-    dp.message.middleware(DbSessionMiddleware(db_pool))
+    # Creating DB engine for PostgreSQL
+    engine = create_async_engine(DB_URL)
+
+    # Creating DB connections pool
+    session_maker = get_session_maker(engine)
+
+    dp.message.middleware(DbSessionMiddleware(session_maker))
+
     # ... and all other routers should be attached to Dispatcher
     dp.include_routers(
         start_router,
@@ -93,8 +95,6 @@ def main() -> None:
     web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
 
     
-
-
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     asyncio.run(main())
