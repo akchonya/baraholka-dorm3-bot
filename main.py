@@ -1,7 +1,6 @@
 import logging
 import sys
-from os import getenv
-from dotenv import load_dotenv
+
 import asyncio
 from aiohttp import web
 from aiogram import Bot, Dispatcher
@@ -17,30 +16,27 @@ from sqlalchemy.pool import NullPool
 from core.handlers.start import start_router
 from core.handlers.new_post import new_post_router
 from core.handlers.play import play_router
+from core.handlers.advert import new_advert_router, my_adverts_router
+from core.handlers.my_adverts_test import my_router
 from core.middlewares.db import DbSessionMiddleware
 from core.db.engine import create_async_engine, procced_schemas, get_session_maker
 from core.db.base import metadata
+from core.utils.config import BOT_TOKEN, WEB_SERVER_HOST, WEBHOOK_SECRET, DB_URL, BASE_WEBHOOK_URL
+from core.utils.commands import set_commands
 
-load_dotenv()
 
-BOT_TOKEN = getenv("BOT_TOKEN")
-
-WEB_SERVER_HOST = getenv("WEB_SERVER_HOST")
 # Port for incoming request from reverse proxy. 
 WEB_SERVER_PORT = 8443
 
 # Path to webhook route, on which Telegram will send requests
 WEBHOOK_PATH = f"/bot/{BOT_TOKEN}"
-# Secret key to validate requests from Telegram (optional)
-WEBHOOK_SECRET = getenv("WEBHOOK_SECRET")
-BASE_WEBHOOK_URL = getenv("BASE_WEBHOOK_URL")
-DB_URL = getenv("DB_URL")
 
 async def on_startup(bot: Bot) -> None:
+    await set_commands(bot)
     # Set webhook 
     await bot.set_webhook(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}", 
                           secret_token=WEBHOOK_SECRET,
-                          allowed_updates=["message", "chat_member", ] # allow updates needed
+                          allowed_updates=["message", "chat_member", "callback_query"] # allow updates needed
                           )
 
     engine = create_async_engine(DB_URL)
@@ -64,7 +60,10 @@ def main() -> None:
     dp.include_routers(
         start_router,
         new_post_router,
-        play_router
+        play_router,
+        new_advert_router,
+        my_adverts_router,
+        my_router
         )
 
     # register other commands

@@ -37,6 +37,6 @@ class Advert(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
 
     def __str__(self) -> str:
-        return f"<Advert: \n" \
+        return f"\n<Advert: \n" \
         f"id: {self.ad_id}\n" \
-        f"caption: {self.caption}>"
+        f"caption: {self.caption}>\n"

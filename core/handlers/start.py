@@ -3,7 +3,7 @@
 '''
 
 from aiogram import Router, html
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import CommandStart, Command, MagicData
 from aiogram.types import Message
 from aiogram.types import ReplyKeyboardRemove
 
@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.db.models import User
 
-import simple_colors  
 
 
 async def get_users_by_id(session: AsyncSession, user_id: int) -> list:
