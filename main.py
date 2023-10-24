@@ -8,6 +8,7 @@ from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from aiogram.fsm.storage.redis import RedisStorage
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.orm import sessionmaker
@@ -23,7 +24,8 @@ from core.db.engine import create_async_engine, procced_schemas, get_session_mak
 from core.db.base import metadata
 from core.utils.config import BOT_TOKEN, WEB_SERVER_HOST, WEBHOOK_SECRET, DB_URL, BASE_WEBHOOK_URL
 from core.utils.commands import set_commands
-
+from core.utils.misc import redis
+from core.middlewares.register_check import RegisterCheck
 
 # Port for incoming request from reverse proxy. 
 WEB_SERVER_PORT = 8443
@@ -46,8 +48,8 @@ async def on_startup(bot: Bot) -> None:
 def main() -> None:
 
     # Dispatcher is a root router
-    dp = Dispatcher()
-
+    dp = Dispatcher(storage=RedisStorage(redis=redis))
+    
     # Creating DB engine for PostgreSQL
     engine = create_async_engine(DB_URL)
 
@@ -55,6 +57,8 @@ def main() -> None:
     session_maker = get_session_maker(engine)
 
     dp.message.middleware(DbSessionMiddleware(session_maker))
+    dp.message.middleware(RegisterCheck())
+    dp.callback_query.middleware(RegisterCheck())
 
     # ... and all other routers should be attached to Dispatcher
     dp.include_routers(

@@ -27,28 +27,49 @@ buttons = [
 keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
 
 user_pos = {}
-ads = ("1st", "2nd", "3rd", "4th")
 
 
 @my_router.message(Command("ads"))
-async def ads_handler(message: Message):
+async def ads_handler(message: Message, session: AsyncSession):
+    # Get user's ads from db
+    ads = await session.execute(select(Advert).where(Advert.user_id == int(message.from_user.id)))
+    ads.scalars().all()
+
+    # Set an user_id
     user_id = message.from_user.id
+
+    # Set the initial index 
     user_pos[user_id] = 0
-    await message.answer(f"{ads[user_pos[user_id]]}", reply_markup=keyboard)
+
+    # Message: {caption of an ad} + ikb
+    await message.answer(f"{ads[user_pos[user_id]].caption}", reply_markup=keyboard)
     
+
 @my_router.callback_query(F.data.startswith("ad_"))
 async def callbacks_ad(callback: CallbackQuery):
+    # Get an action and user_id
     action = callback.data.split("_")[1]
     user_id = callback.from_user.id
+
+    # If the action is next and index is not the last: 
     if action == "next" and user_pos[user_id] != len(ads) - 1:
+        # Ignore the error with the same message after the edit
         with suppress(TelegramBadRequest):
+            # Increment the index
             user_pos[user_id] += 1
+
+            # Message: another ad with the same kb
             await callback.message.edit_text(f"{ads[user_pos[user_id]]}", reply_markup=keyboard)
             await callback.answer()
     
+    # If the action is prev and index isn't the first
     elif action == "prev" and user_pos[user_id] != 0:
+        # Ignore the error with the same message after the edit
         with suppress(TelegramBadRequest):
+            # Decrement the index
             user_pos[user_id] -= 1
+
+            # Message: previous ad with the same kb 
             await callback.message.edit_text(f"{ads[user_pos[user_id]]}", reply_markup=keyboard)
             await callback.answer()
     
