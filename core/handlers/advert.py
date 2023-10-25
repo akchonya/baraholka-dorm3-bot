@@ -19,6 +19,19 @@ from contextlib import suppress
 from aiogram.exceptions import TelegramBadRequest
 
 
+# A function for editing a messsage with ad 
+async def edit_advert(
+        advert: dict
+):
+    msg = f"<b>{advert['caption']}</b>\n" \
+               f"{advert['description']}\n\n" \
+               f"ціна: {advert['price']}\n\n" \
+               f"звертатися до " \
+               f"<a href='tg://user?id={advert['user_id']}'>автора оголошення</a>"
+    
+    return msg
+
+
 # Create states
 class StatesNewAdvert(StatesGroup):
     GET_CAPTION = State()
@@ -112,8 +125,9 @@ async def ads_handler(message: Message, session: AsyncSession):
     user_pos = 0
     await redis.set(name="user_ads_pos:" + str(user_id), value=0, ex=3600)
 
-    # Message: caption of an ad + ikb
-    await message.answer(f"{ads[user_pos]['caption']}", reply_markup=keyboard)
+    # Message: ad + ikb
+    msg = await edit_advert(ads[user_pos])
+    await message.answer(msg, reply_markup=keyboard, parse_mode="HTML")
 
 
 @my_router.callback_query(F.data.startswith("ad_"))
@@ -141,7 +155,8 @@ async def callbacks_ad(callback: CallbackQuery):
             await redis.set(name="user_ads_pos:" + str(user_id), value=user_pos, ex=3600)
 
             # Message: another ad with the same kb
-            await callback.message.edit_text(f"{ads[user_pos]['caption']}", reply_markup=keyboard)
+            msg = await edit_advert(ads[user_pos])
+            await callback.message.edit_text(msg, reply_markup=keyboard, parse_mode="HTML")
             await callback.answer()
     
     # If the action is prev and index isn't the first
@@ -154,8 +169,9 @@ async def callbacks_ad(callback: CallbackQuery):
             user_pos -= 1
             await redis.set(name="user_ads_pos:" + str(user_id), value=user_pos, ex=3600)
 
-            # Message: previous ad with the same kb 
-            await callback.message.edit_text(f"{ads[user_pos]['caption']}", reply_markup=keyboard)
+            # Message: previous ad with the same kb
+            msg = await edit_advert(ads[user_pos])
+            await callback.message.edit_text(msg, reply_markup=keyboard, parse_mode="HTML")
             await callback.answer()
     
     else:
