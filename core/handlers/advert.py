@@ -9,20 +9,8 @@ from aiogram.methods import edit_message_text
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from ..utils.misc import redis
 from core.db.models import Advert
-
-user_data = {}
-
-def get_keyboard(msg_id):
-    buttons = [
-        [
-            InlineKeyboardButton(text="←", callback_data="ad_prev_{msg_id}"),
-            InlineKeyboardButton(text="→", callback_data="ad_next_{msg_id}")
-        ],
-    ]
-    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-    return keyboard
 
 
 # Create states
@@ -37,6 +25,10 @@ MY_CHANNEL = "@testieman_group"
 
 @new_advert_router.message(Command("new_advert"))
 async def new_post_handler(message: Message, state: FSMContext):
+    await redis.delete(
+        "user_ads:" + str(message.from_user.id),
+        "user_ads_pos:" + str(message.from_user.id)
+        )
     await state.set_state(StatesNewAdvert.GET_CAPTION)
     await message.answer("назва?")
 
@@ -71,35 +63,3 @@ async def get_price_handler(message: Message, state: FSMContext, session: AsyncS
 
     await state.clear()
 
-
-my_adverts_router = Router()
-@my_adverts_router.message(Command("my_adverts"))
-async def my_adverts_handler(message: Message, session: AsyncSession):
-    user_data[message.from_user.id] = 0
-    adverts = await session.execute(
-        select(Advert).where(Advert.user_id == int(message.from_user.id))
-    )
-
-    adverts = adverts.scalars().all()
-    msg = await message.answer(adverts[0].caption)
-    msg = msg.message_id 
-    await message.answer("можна листати вправо вліво", reply_markup=get_keyboard(msg))
-
-# @my_adverts_router.callback_query(F.data.startswith("ad_"))
-# async def callbacks_num(bot: Bot, callback: CallbackQuery):
-#     user_value = user_data.get(callback.from_user.id, 0)
-#     data = callback.data.split("_")
-#     print(f"\n\n{data}\n\n")
-#     action = data[1]
-#     msg = data[2]
-
-#     if action == "next":
-#         user_data[callback.from_user.id] = user_value+1
-#         await bot.edit_message_text(chat_id=callback.from_user.id, message_id=msg, text="done")
-#     elif action == "prev":
-#         user_data[callback.from_user.id] = user_value-1
-#         print("\nok\n")
-        
-
-
-    # await callback.answer()

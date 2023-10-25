@@ -33,7 +33,7 @@ class Advert(Base):
     description = Column(VARCHAR, unique=False, nullable=False)
     price = Column(REAL, unique=False, nullable=False)
     room = Column(Integer, unique=False, nullable=False)
-    creation_date = Column(DATE, default=datetime.date.today(), nullable=False)
+    status = Column(VARCHAR, unique=False, default="active")
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
 
     def __str__(self) -> str:

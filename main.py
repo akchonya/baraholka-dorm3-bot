@@ -17,7 +17,7 @@ from sqlalchemy.pool import NullPool
 from core.handlers.start import start_router
 from core.handlers.new_post import new_post_router
 from core.handlers.play import play_router
-from core.handlers.advert import new_advert_router, my_adverts_router
+from core.handlers.advert import new_advert_router
 from core.handlers.my_adverts_test import my_router
 from core.middlewares.db import DbSessionMiddleware
 from core.db.engine import create_async_engine, procced_schemas, get_session_maker
@@ -58,7 +58,6 @@ def main() -> None:
 
     dp.message.middleware(DbSessionMiddleware(session_maker))
     dp.message.middleware(RegisterCheck())
-    dp.callback_query.middleware(RegisterCheck())
 
     # ... and all other routers should be attached to Dispatcher
     dp.include_routers(
@@ -66,7 +65,6 @@ def main() -> None:
         new_post_router,
         play_router,
         new_advert_router,
-        my_adverts_router,
         my_router
         )
 
