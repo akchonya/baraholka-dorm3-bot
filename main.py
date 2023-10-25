@@ -17,8 +17,8 @@ from sqlalchemy.pool import NullPool
 from core.handlers.start import start_router
 from core.handlers.new_post import new_post_router
 from core.handlers.play import play_router
-from core.handlers.advert import new_advert_router
-from core.handlers.my_adverts_test import my_router
+from core.handlers.advert import new_advert_router, my_router
+# from core.handlers.my_adverts_test import my_router
 from core.middlewares.db import DbSessionMiddleware
 from core.db.engine import create_async_engine, procced_schemas, get_session_maker
 from core.db.base import metadata

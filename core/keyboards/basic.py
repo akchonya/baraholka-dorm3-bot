@@ -6,7 +6,7 @@ from aiogram.types import (
 )
 
 
-my_ads_ikb = InlineKeyboardMarkup(keyboard=[
+my_ads_ikb = InlineKeyboardMarkup(inline_keyboard=[
     [
         InlineKeyboardButton(text="←", callback_data="ad_prev"),
         InlineKeyboardButton(text="→", callback_data="ad_next")
