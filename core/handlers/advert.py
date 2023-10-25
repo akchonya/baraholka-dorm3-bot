@@ -27,6 +27,7 @@ class StatesNewAdvert(StatesGroup):
 
 new_advert_router = Router()
 
+
 MY_CHANNEL = "@testieman_group"
 
 @new_advert_router.message(Command("new_advert"))
@@ -85,6 +86,11 @@ async def ads_handler(message: Message, session: AsyncSession):
         sql_res = await session.execute(select(Advert).where(Advert.user_id == int(user_id)))
         sql_res = sql_res.scalars().all()
 
+        # If there aren't any ads -> send a message and stop operation
+        if len(sql_res) == 0:
+            await message.answer(f"поки пусто :(\nви можете створити оголошення за допомогою /new_advert")
+            return "abort"
+        
         # Turn rows into dicts 
         ads = []
         for r in sql_res:
@@ -94,7 +100,7 @@ async def ads_handler(message: Message, session: AsyncSession):
             ads.append(r)
 
         # Pack the list of dictionaries and cache to the redis db
-        await redis.set(name="user_ads:" + str(user_id), value=msgpack.packb(ads, use_bin_type=True))
+        await redis.set(name="user_ads:" + str(user_id), value=msgpack.packb(ads, use_bin_type=True), ex=3600)
     
     # If there already was cache -> use it 
     else:
