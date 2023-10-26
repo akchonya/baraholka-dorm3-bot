@@ -12,4 +12,3 @@ my_ads_ikb = InlineKeyboardMarkup(inline_keyboard=[
         InlineKeyboardButton(text="→", callback_data="ad_next")
     ]
 ])
-
