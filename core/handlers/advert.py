@@ -44,6 +44,8 @@ class StatesNewAdvert(StatesGroup):
     GET_CAPTION = State()
     GET_DESCRIPTION = State()
     GET_PRICE = State()
+    GET_ROOM = State()
+    GET_PHOTO = State()
 
 
 new_advert_router = Router()
@@ -52,6 +54,7 @@ new_advert_router = Router()
 MY_CHANNEL = "@testieman_group"
 
 
+# Ask for a caption 
 @new_advert_router.message(Command("new_advert"))
 async def new_post_handler(message: Message, state: FSMContext):
     """New advert start handler
@@ -67,11 +70,10 @@ async def new_post_handler(message: Message, state: FSMContext):
     await state.set_state(StatesNewAdvert.GET_CAPTION)
     await message.answer("назва?")
 
+
 # A cancelation option
-
-
-@new_advert_router.message(Command("cancel"), StateFilter(StatesNewAdvert.GET_CAPTION, StatesNewAdvert.GET_DESCRIPTION, StatesNewAdvert.GET_PRICE))
-@new_advert_router.message(F.text.casefold() == "cancel", StateFilter(StatesNewAdvert.GET_CAPTION, StatesNewAdvert.GET_DESCRIPTION, StatesNewAdvert.GET_PRICE))
+@new_advert_router.message(Command("cancel"), StateFilter(StatesNewAdvert))
+@new_advert_router.message(F.text.casefold() == "cancel", StateFilter(StatesNewAdvert))
 async def cancel_handler(message: Message, state: FSMContext) -> None:
     """
     Allow user to cancel any action
@@ -89,44 +91,137 @@ async def cancel_handler(message: Message, state: FSMContext) -> None:
     )
 
 
-@new_advert_router.message(StatesNewAdvert.GET_CAPTION)
+# Save the caption and ask for a description
+@new_advert_router.message(F.text, StatesNewAdvert.GET_CAPTION)
 async def get_caption_handler(message: Message, state: FSMContext):
-    """
-    Get the caption and ask for a description
-    """
     await state.update_data(caption=message.text)
     await message.answer("ок. опис?")
     await state.set_state(StatesNewAdvert.GET_DESCRIPTION)
 
 
-@new_advert_router.message(StatesNewAdvert.GET_DESCRIPTION)
+@new_advert_router.message(StatesNewAdvert.GET_CAPTION)
+async def unwanted_caption_handler(message: Message):
+    await message.answer(
+        "<b>назва має бути текстом.</b> спробуйте ще раз" \
+        "\nнатисніть /cancel для відміни створення оголошення",
+        parse_mode="HTML"
+        )
+
+
+# Save the description and ask for a price
+@new_advert_router.message(F.text, StatesNewAdvert.GET_DESCRIPTION)
 async def get_description_handler(message: Message, state: FSMContext):
-    """
-    Get the description and ask for a price
-    """
     await state.update_data(description=message.text)
     await message.answer("ок. ціна?")
     await state.set_state(StatesNewAdvert.GET_PRICE)
 
 
+@new_advert_router.message(StatesNewAdvert.GET_DESCRIPTION)
+async def unwanted_description_handler(message: Message):
+    await message.answer(
+        "<b>опис має бути текстом.</b> спробуйте ще раз" \
+        "\nнатисніть /cancel для відміни створення оголошення",
+        parse_mode="HTML"
+        )
+
+
+# Save the price and ask for a room
+@new_advert_router.message(F.text, StatesNewAdvert.GET_PRICE)
+async def get_price_handler(message: Message, state: FSMContext):
+    await state.update_data(price=message.text)
+    await message.answer("ок. кімната? якщо не хочете вказувати - натисніть /skip")
+    await state.set_state(StatesNewAdvert.GET_ROOM)
+
+
 @new_advert_router.message(StatesNewAdvert.GET_PRICE)
-async def get_price_handler(message: Message, state: FSMContext, session: AsyncSession):
+async def unwanted_price_handler(message: Message):
+    await message.answer(
+        "<b>ціна має бути текстом.</b> спробуйте ще раз" \
+        "\nнатисніть /cancel для відміни створення оголошення",
+        parse_mode="HTML"
+        )
+
+
+# Skip the room and ask for a photo
+@new_advert_router.message(F.text == "/skip", StatesNewAdvert.GET_ROOM)
+async def skip_room_handler(message: Message, state: FSMContext):
+    await state.update_data(room="не вказано.")
+    await message.answer("ок, забили на кімнату. будете додавати фото? натисніть /skip якщо ні")
+    await state.set_state(StatesNewAdvert.GET_PHOTO)
+
+
+# Save the room and ask for a photo
+@new_advert_router.message(F.text, StatesNewAdvert.GET_ROOM)
+async def get_room_handler(message: Message, state: FSMContext):
+    await state.update_data(room=message.text)
+    await message.answer("ок, записали кімнату. будете додавати фото? натисніть /skip якщо ні")
+    await state.set_state(StatesNewAdvert.GET_PHOTO)
+
+
+@new_advert_router.message(StatesNewAdvert.GET_ROOM)
+async def unwanted_room_handler(message: Message):
+    await message.answer(
+        "<b>кімната має бути текстом.</b> спробуйте ще раз" \
+        "\nнатисніть /cancel для відміни створення оголошення" \
+        "\nнатисніть /skip щоб пропустити додавання кімнати",
+        parse_mode="HTML"
+        )
+
+
+# Skip the photo and save everything
+@new_advert_router.message(F.text == "/skip", StatesNewAdvert.GET_PHOTO)
+async def skip_photo_handler(message: Message, state: FSMContext, session: AsyncSession):
     context_data = await state.get_data()
     caption = context_data.get("caption")
-    description = context_data.get("description")
-    price = message.text
+    description = context_data.get("description")   
+    price = context_data.get("price")
+    room = context_data.get("room")
 
     await session.merge(Advert(
         caption=caption,
         description=description,
         price=price,
-        room=311,
+        room=room,
         user_id=int(message.from_user.id)
     )
     )
+    
     await session.commit()
-
     await state.clear()
+    await message.answer("все збережено. можете переглянути в /ads")
+
+
+# Save the photo and save everything
+@new_advert_router.message(F.photo, StatesNewAdvert.GET_PHOTO)
+async def get_photo_handler(message: Message, state: FSMContext, session: AsyncSession):
+    context_data = await state.get_data()
+    caption = context_data.get("caption")
+    description = context_data.get("description")   
+    price = context_data.get("price")
+    room = context_data.get("room")
+
+    await session.merge(Advert(
+        caption=caption,
+        description=description,
+        price=price,
+        room=room,
+        user_id=int(message.from_user.id)
+    )
+    )
+    
+    await session.commit()
+    await state.clear()
+    await message.answer("все збережено. можете переглянути в /ads")
+
+
+@new_advert_router.message(StatesNewAdvert.GET_PHOTO)
+async def unwanted_photo_handler(message: Message):
+    await message.answer(
+        "<b>помилка.</b> спробуйте ще раз" \
+        "\nнатисніть /cancel для відміни створення оголошення"\
+        "\nнатисніть /skip щоб пропустити додавання фото",
+        parse_mode="HTML"
+        )
 
 
 my_router = Router()

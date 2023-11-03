@@ -8,8 +8,16 @@ ADMIN = ADMIN_ID[0]
 
 user_commands = [
         BotCommand(
-            command="user",
-            description="user"
+            command="start",
+            description="start"
+        ),
+        BotCommand(
+            command="new_advert",
+            description="new advert"
+        ),
+        BotCommand(
+            command="ads",
+            description="show your ads"
         )
     ]
 

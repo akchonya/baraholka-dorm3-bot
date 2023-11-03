@@ -32,7 +32,7 @@ class Advert(Base):
     caption = Column(VARCHAR, unique=False, nullable=False)
     description = Column(VARCHAR, unique=False, nullable=False)
     price = Column(VARCHAR, unique=False, nullable=False)
-    room = Column(Integer, unique=False, nullable=False)
+    room = Column(VARCHAR, unique=False, nullable=False)
     status = Column(VARCHAR, unique=False, default="active")
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
 
