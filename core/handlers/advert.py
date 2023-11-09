@@ -19,10 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..utils.misc import redis
 
 
-async def edit_advert(
-        advert: dict
-):
-    """Function for creating ads messages 
+async def edit_advert(advert: dict):
+    """Function for creating ads messages
 
     Args:
         advert (dict): 'caption', 'description', 'price', 'user_id'
@@ -30,11 +28,13 @@ async def edit_advert(
     Returns:
         msg (str): ad message
     """
-    msg = f"<b>{advert['caption']}</b>\n" \
-        f"{advert['description']}\n\n" \
-        f"ціна: {advert['price']}\n\n" \
-        f"звертатися до " \
+    msg = (
+        f"<b>{advert['caption']}</b>\n"
+        f"{advert['description']}\n\n"
+        f"ціна: {advert['price']}\n\n"
+        f"звертатися до "
         f"<a href='tg://user?id={advert['user_id']}'>автора оголошення</a>"
+    )
 
     return msg
 
@@ -54,7 +54,7 @@ new_advert_router = Router()
 MY_CHANNEL = "@testieman_group"
 
 
-# Ask for a caption 
+# Ask for a caption
 @new_advert_router.message(Command("new_advert"))
 async def new_post_handler(message: Message, state: FSMContext):
     """New advert start handler
@@ -65,7 +65,7 @@ async def new_post_handler(message: Message, state: FSMContext):
     """
     await redis.delete(
         "user_ads:" + str(message.from_user.id),
-        "user_ads_pos:" + str(message.from_user.id)
+        "user_ads_pos:" + str(message.from_user.id),
     )
     await state.set_state(StatesNewAdvert.GET_CAPTION)
     await message.answer("назва?")
@@ -87,7 +87,7 @@ async def cancel_handler(message: Message, state: FSMContext) -> None:
     await message.answer(
         "<b>відмінено створення нового оголошення</b>.\nповертайтеся ще :(",
         reply_markup=ReplyKeyboardRemove(),
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
@@ -102,10 +102,10 @@ async def get_caption_handler(message: Message, state: FSMContext):
 @new_advert_router.message(StatesNewAdvert.GET_CAPTION)
 async def unwanted_caption_handler(message: Message):
     await message.answer(
-        "<b>назва має бути текстом.</b> спробуйте ще раз" \
+        "<b>назва має бути текстом.</b> спробуйте ще раз"
         "\nнатисніть /cancel для відміни створення оголошення",
-        parse_mode="HTML"
-        )
+        parse_mode="HTML",
+    )
 
 
 # Save the description and ask for a price
@@ -119,10 +119,10 @@ async def get_description_handler(message: Message, state: FSMContext):
 @new_advert_router.message(StatesNewAdvert.GET_DESCRIPTION)
 async def unwanted_description_handler(message: Message):
     await message.answer(
-        "<b>опис має бути текстом.</b> спробуйте ще раз" \
+        "<b>опис має бути текстом.</b> спробуйте ще раз"
         "\nнатисніть /cancel для відміни створення оголошення",
-        parse_mode="HTML"
-        )
+        parse_mode="HTML",
+    )
 
 
 # Save the price and ask for a room
@@ -136,17 +136,19 @@ async def get_price_handler(message: Message, state: FSMContext):
 @new_advert_router.message(StatesNewAdvert.GET_PRICE)
 async def unwanted_price_handler(message: Message):
     await message.answer(
-        "<b>ціна має бути текстом.</b> спробуйте ще раз" \
+        "<b>ціна має бути текстом.</b> спробуйте ще раз"
         "\nнатисніть /cancel для відміни створення оголошення",
-        parse_mode="HTML"
-        )
+        parse_mode="HTML",
+    )
 
 
 # Skip the room and ask for a photo
 @new_advert_router.message(F.text == "/skip", StatesNewAdvert.GET_ROOM)
 async def skip_room_handler(message: Message, state: FSMContext):
     await state.update_data(room="не вказано.")
-    await message.answer("ок, забили на кімнату. будете додавати фото? натисніть /skip якщо ні")
+    await message.answer(
+        "ок, забили на кімнату. будете додавати фото? натисніть /skip якщо ні"
+    )
     await state.set_state(StatesNewAdvert.GET_PHOTO)
 
 
@@ -154,38 +156,43 @@ async def skip_room_handler(message: Message, state: FSMContext):
 @new_advert_router.message(F.text, StatesNewAdvert.GET_ROOM)
 async def get_room_handler(message: Message, state: FSMContext):
     await state.update_data(room=message.text)
-    await message.answer("ок, записали кімнату. будете додавати фото? натисніть /skip якщо ні")
+    await message.answer(
+        "ок, записали кімнату. будете додавати фото? натисніть /skip якщо ні"
+    )
     await state.set_state(StatesNewAdvert.GET_PHOTO)
 
 
 @new_advert_router.message(StatesNewAdvert.GET_ROOM)
 async def unwanted_room_handler(message: Message):
     await message.answer(
-        "<b>кімната має бути текстом.</b> спробуйте ще раз" \
-        "\nнатисніть /cancel для відміни створення оголошення" \
+        "<b>кімната має бути текстом.</b> спробуйте ще раз"
+        "\nнатисніть /cancel для відміни створення оголошення"
         "\nнатисніть /skip щоб пропустити додавання кімнати",
-        parse_mode="HTML"
-        )
+        parse_mode="HTML",
+    )
 
 
 # Skip the photo and save everything
 @new_advert_router.message(F.text == "/skip", StatesNewAdvert.GET_PHOTO)
-async def skip_photo_handler(message: Message, state: FSMContext, session: AsyncSession):
+async def skip_photo_handler(
+    message: Message, state: FSMContext, session: AsyncSession
+):
     context_data = await state.get_data()
     caption = context_data.get("caption")
-    description = context_data.get("description")   
+    description = context_data.get("description")
     price = context_data.get("price")
     room = context_data.get("room")
 
-    await session.merge(Advert(
-        caption=caption,
-        description=description,
-        price=price,
-        room=room,
-        user_id=int(message.from_user.id)
+    await session.merge(
+        Advert(
+            caption=caption,
+            description=description,
+            price=price,
+            room=room,
+            user_id=int(message.from_user.id),
+        )
     )
-    )
-    
+
     await session.commit()
     await state.clear()
     await message.answer("все збережено. можете переглянути в /ads")
@@ -196,19 +203,20 @@ async def skip_photo_handler(message: Message, state: FSMContext, session: Async
 async def get_photo_handler(message: Message, state: FSMContext, session: AsyncSession):
     context_data = await state.get_data()
     caption = context_data.get("caption")
-    description = context_data.get("description")   
+    description = context_data.get("description")
     price = context_data.get("price")
     room = context_data.get("room")
 
-    await session.merge(Advert(
-        caption=caption,
-        description=description,
-        price=price,
-        room=room,
-        user_id=int(message.from_user.id)
+    await session.merge(
+        Advert(
+            caption=caption,
+            description=description,
+            price=price,
+            room=room,
+            user_id=int(message.from_user.id),
+        )
     )
-    )
-    
+
     await session.commit()
     await state.clear()
     await message.answer("все збережено. можете переглянути в /ads")
@@ -217,11 +225,11 @@ async def get_photo_handler(message: Message, state: FSMContext, session: AsyncS
 @new_advert_router.message(StatesNewAdvert.GET_PHOTO)
 async def unwanted_photo_handler(message: Message):
     await message.answer(
-        "<b>помилка.</b> спробуйте ще раз" \
-        "\nнатисніть /cancel для відміни створення оголошення"\
+        "<b>помилка.</b> спробуйте ще раз"
+        "\nнатисніть /cancel для відміни створення оголошення"
         "\nнатисніть /skip щоб пропустити додавання фото",
-        parse_mode="HTML"
-        )
+        parse_mode="HTML",
+    )
 
 
 my_router = Router()
@@ -237,7 +245,9 @@ async def ads_handler(message: Message, session: AsyncSession):
 
     # If None -> cache and use it
     if not res:
-        sql_res = await session.execute(select(Advert).where(Advert.user_id == int(user_id)))
+        sql_res = await session.execute(
+            select(Advert).where(Advert.user_id == int(user_id))
+        )
         sql_res = sql_res.scalars().all()
 
         # If there aren't any ads -> send a message and stop operation
@@ -251,18 +261,21 @@ async def ads_handler(message: Message, session: AsyncSession):
         ads = []
         for r in sql_res:
             # Don't accept _sa_instance_state key
-            r = {k: v for (k, v) in r.__dict__.items()
-                 if k != '_sa_instance_state'}
+            r = {k: v for (k, v) in r.__dict__.items() if k != "_sa_instance_state"}
             ads.append(r)
 
         # Pack the list of dictionaries and cache to the redis db
-        await redis.set(name="user_ads:" + str(user_id), value=msgpack.packb(ads, use_bin_type=True), ex=3600)
+        await redis.set(
+            name="user_ads:" + str(user_id),
+            value=msgpack.packb(ads, use_bin_type=True),
+            ex=3600,
+        )
 
     # If there already was cache -> use it
     else:
         val = await redis.get("user_ads:" + str(user_id))
         # Unpack values
-        ads = msgpack.unpackb(val, encoding='utf-8')
+        ads = msgpack.unpackb(val, encoding="utf-8")
 
     # Set the initial index and add to the redis db
     user_pos = 0
@@ -280,41 +293,45 @@ async def callbacks_ad(callback: CallbackQuery):
     user_id = callback.from_user.id
 
     # Get user position from the redis and turn it to int
-    user_pos = await redis.get(name='user_ads_pos:' + str(user_id))
+    user_pos = await redis.get(name="user_ads_pos:" + str(user_id))
     user_pos = int(user_pos)
 
     # Get ads from the redis and unpack them
     val = await redis.get(name="user_ads:" + str(user_id))
-    ads = msgpack.unpackb(val, encoding='utf-8')
+    ads = msgpack.unpackb(val, encoding="utf-8")
 
     # If the action is next and index is not the last:
     if action == "next" and user_pos != len(ads) - 1:
-
         # Ignore the error with the same message after the edit
         with suppress(TelegramBadRequest):
-
             # Increment the index
             user_pos += 1
-            await redis.set(name="user_ads_pos:" + str(user_id), value=user_pos, ex=3600)
+            await redis.set(
+                name="user_ads_pos:" + str(user_id), value=user_pos, ex=3600
+            )
 
             # Message: another ad with the same kb
             msg = await edit_advert(ads[user_pos])
-            await callback.message.edit_text(msg, reply_markup=keyboard, parse_mode="HTML")
+            await callback.message.edit_text(
+                msg, reply_markup=keyboard, parse_mode="HTML"
+            )
             await callback.answer()
 
     # If the action is prev and index isn't the first
     elif action == "prev" and user_pos != 0:
-
         # Ignore the error with the same message after the edit
         with suppress(TelegramBadRequest):
-
             # Decrement the index
             user_pos -= 1
-            await redis.set(name="user_ads_pos:" + str(user_id), value=user_pos, ex=3600)
+            await redis.set(
+                name="user_ads_pos:" + str(user_id), value=user_pos, ex=3600
+            )
 
             # Message: previous ad with the same kb
             msg = await edit_advert(ads[user_pos])
-            await callback.message.edit_text(msg, reply_markup=keyboard, parse_mode="HTML")
+            await callback.message.edit_text(
+                msg, reply_markup=keyboard, parse_mode="HTML"
+            )
             await callback.answer()
 
     else:

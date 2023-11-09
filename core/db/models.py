@@ -15,11 +15,12 @@ from core.db.base import Base
 class User(Base):
     __tablename__ = "users"
 
-    user_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, unique=True, nullable=False, primary_key=True
+    )
     username = Column(VARCHAR(32), unique=False, nullable=True)
     reg_date = Column(DATE, default=datetime.date.today(), nullable=False)
     adverts: Mapped[List["Advert"]] = relationship()
-
 
     def __str__(self) -> str:
         return f"<User id: {self.user_id} | username: {self.username}>"
@@ -28,7 +29,9 @@ class User(Base):
 class Advert(Base):
     __tablename__ = "adverts"
 
-    ad_id: Mapped[int] = mapped_column(Integer, autoincrement="auto", unique=True, nullable=False, primary_key=True)
+    ad_id: Mapped[int] = mapped_column(
+        Integer, autoincrement="auto", unique=True, nullable=False, primary_key=True
+    )
     caption = Column(VARCHAR, unique=False, nullable=False)
     description = Column(VARCHAR, unique=False, nullable=False)
     price = Column(VARCHAR, unique=False, nullable=False)
@@ -37,6 +40,4 @@ class Advert(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
 
     def __str__(self) -> str:
-        return f"\n<Advert: \n" \
-        f"id: {self.ad_id}\n" \
-        f"caption: {self.caption}>\n"
+        return f"\n<Advert: \n" f"id: {self.ad_id}\n" f"caption: {self.caption}>\n"
